@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reading Indonesian ID cards and receipts · Steffi Soeroredjo</title>
+<meta name="description" content="Case study: OCR for KTP/SIM cards and fuel and toll receipts, with a browser demo of how the NIK number double-checks the OCR.">
+<meta property="og:title" content="Reading Indonesian ID cards, and catching misreads with the NIK itself">
+<meta property="og:description" content="Check-in from 159 seconds to about 5, and a demo you can try.">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B6E4F'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='36' font-weight='700' fill='%23ffffff' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&amp;family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&amp;display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="site-header rise">
+<a class="name" href="../">Steffi Soeroredjo</a>
+<nav class="site-nav" aria-label="Main">
+<a href="../#work">Work</a>
+<a href="../#now">Now</a>
+<a href="../#about">About</a>
+<a href="../#cv">CV</a>
+</nav>
+</header>
+
+<main>
+
+<section class="cs-head" aria-labelledby="title">
+<a class="back rise" href="../#work">← All case studies</a>
+<p class="status rise d1">Case study · 2025–2026</p>
+<h1 id="title" class="rise d2">Reading Indonesian ID cards, and catching misreads with the NIK itself</h1>
+<p class="lede rise d3">Two OCR tools that replace manual typing: one reads KTP and SIM cards for the warehouse guestbook, the other reads drivers' fuel and toll receipts for expense claims.</p>
+<dl class="facts rise d4">
+<div><dt>My role</dt><dd>Built both end to end</dd></div>
+<div><dt>When</dt><dd>Oct 2025 – Aug 2026</dd></div>
+<div><dt>Status</dt><dd>ID cards in daily use; receipts ready, waiting for the expense app</dd></div>
+<div><dt>Built with</dt><dd>PaddleOCR, OpenCV, ONNX Runtime, Flask, FastAPI, React</dd></div>
+</dl>
+</section>
+
+<section class="row reveal" aria-labelledby="problem">
+<h2 id="problem">The problem</h2>
+<div class="body">
+<p>At the warehouse gate, security guards copied visitor details from ID cards by hand, and only 2 fields were written down. Copying all 15 by hand, which we timed on video, takes about 159 seconds per visitor.</p>
+<p>Drivers' fuel and toll receipts had a similar story: each one was copied onto a paper form, added up with a calculator, then typed into the system again by Finance. That's about 108 seconds of writing plus 102 seconds of typing, per receipt.</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="ktp">
+<h2 id="ktp">ID cards</h2>
+<div class="body">
+<p>A guard takes one photo of the card. The service cleans up the image with OpenCV, reads it with PaddleOCR's Indonesian model, then splits the text into up to 15 fields: NIK, name, place and date of birth, gender, address and so on.</p>
+<p>The OCR is the easy part. The hard part is that it's wrong in small, believable ways: a 1 read as a 7, a smudged birth date, a place name with one letter off. So after reading, the service checks the card against itself. Place names are matched against a list of real ones, and the NIK is compared with the printed birth date and gender.</p>
+<h3>The NIK trick</h3>
+<p>A KTP's 16-digit NIK isn't random. It encodes where the card was issued and the holder's birth date, and for women, 40 is added to the day of birth. So the number tells you what the birth date and gender fields should say.</p>
+<p>When the NIK reads cleanly, the service trusts it and uses it to correct a misread gender. When the NIK itself is garbled, it works the other way and rebuilds those digits from the printed birth date and gender. If the two still disagree, the result is marked as failing the cross-check, with a note saying which part doesn't match.</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="demo-title">
+<h2 id="demo-title">Try it</h2>
+<div class="body">
+<figure class="demo" aria-describedby="demo-note">
+<p class="fig-title">Decode a NIK and cross-check it against the card</p>
+<p id="demo-note" class="small sans muted">The example below is made up. This runs entirely in your browser and nothing is sent anywhere, but please don't type a real person's NIK into any website, including this one.</p>
+<div class="demo-inputs">
+<label>NIK (16 digits)<input id="nik" class="nik" inputmode="numeric" autocomplete="off" maxlength="16" value="3174055205960001" aria-describedby="demo-note"></label>
+<label>Birth date printed on the card<input id="dob" autocomplete="off" value="12-05-1996" placeholder="DD-MM-YYYY"></label>
+<label>Gender printed on the card<select id="sex"><option value="F" selected>PEREMPUAN (female)</option><option value="M">LAKI-LAKI (male)</option></select></label>
+</div>
+<div class="segments" aria-live="polite">
+<div class="seg" id="seg-prov"><code>31</code><b>Province</b><span>DKI Jakarta</span></div>
+<div class="seg" id="seg-area"><code>74 05</code><b>Regency and district</b><span>area codes</span></div>
+<div class="seg" id="seg-day"><code>52</code><b>Day of birth</b><span>12, female (52 − 40)</span></div>
+<div class="seg" id="seg-mmyy"><code>05 96</code><b>Month and year</b><span>May 1996</span></div>
+<div class="seg" id="seg-serial"><code>0001</code><b>Serial number</b><span>order of registration</span></div>
+</div>
+<div id="check" class="check ok" role="status"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg><span>Matches the card: the NIK says 12 May 1996, female.</span></div>
+<p><button id="misread" type="button">Simulate an OCR misread</button></p>
+<figcaption>The real service does this check on every card, alongside a confidence grade from A to F.</figcaption>
+</figure>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="receipts">
+<h2 id="receipts">Receipts</h2>
+<div class="body">
+<p>Fuel receipts come in four layouts. The reader runs a 13-stage pipeline and extracts 8 fields, then checks the arithmetic: litres times price per litre has to equal the total. Toll receipts have no fixed layout. That reader extracts 6 fields and fuzzy-matches the toll operator and gate against lists of real names.</p>
+<figure>
+<p class="fig-title">What the OCR reads, and what gets saved</p>
+<div class="io">
+<div class="io-row">
+<div><span class="io-label">OCR text (made-up fuel receipt)</span><p class="raw">PRODUK : PERTAL1TE<br>HARGA/LITER : Rp 10.000<br>VOLUME (L) : 12,50<br>TOTAL HARGA : Rp 125.000</p></div>
+<div><span class="io-label">Saved</span><p class="attrs"><span>Pertalite</span><span>Rp 10.000 / litre</span><span>12.50 litres</span><span>Rp 125.000</span><span>12.50 × 10.000 = 125.000 ✓</span></p></div>
+</div>
+<div class="io-row">
+<div><span class="io-label">OCR text (toll gate line, from a real test receipt)</span><p class="raw">KOSAMBT 2</p></div>
+<div><span class="io-label">Saved</span><p class="attrs"><span>Gate: Kosambi 2</span><span>matched against the gate list</span></p></div>
+</div>
+</div>
+</figure>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="speed">
+<h2 id="speed">Making it fast enough</h2>
+<div class="body">
+<ul>
+<li><strong>Fuel receipts:</strong> moving the OCR model to ONNX Runtime cut each scan from 2.8 to 1.8 seconds, and startup from 13 to 2.3 seconds, with identical output.</li>
+<li><strong>Toll receipts:</strong> median processing time went from 35.2 to 5.5 seconds, with no loss in accuracy.</li>
+<li><strong>SIM cards:</strong> from about 9.5 to 5.4 seconds, checked on 45 samples, with the same results.</li>
+</ul>
+<p>Each speed-up was checked against the previous version's results on real samples, so a faster version couldn't quietly read differently.</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="didnt">
+<h2 id="didnt">What didn't work (yet)</h2>
+<div class="body">
+<ul>
+<li><strong>Accuracy moves around.</strong> In monthly checks, field accuracy on ID cards ranged from roughly 78% to 95%, which is why I keep re-checking it every month.</li>
+<li><strong>Toll gate names are the weak spot.</strong> Across 138 hand-labelled toll receipts, 74% of fields were read correctly, but the gate name only about 45% of the time.</li>
+<li><strong>I haven't measured fuel-receipt accuracy against hand labels yet.</strong> The arithmetic check catches inconsistent reads, but it isn't the same as a labelled test set.</li>
+</ul>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="results">
+<h2 id="results">Results</h2>
+<div class="body">
+<ul>
+<li>Check-in dropped from about <strong>159 seconds to about 5</strong> per visitor, and up to 15 fields get recorded instead of 2.</li>
+<li><strong>1,273 visitors</strong> processed from January to September 2026, saving roughly <strong>54 hours</strong> of guards' time.</li>
+<li>A <strong>75% adoption index</strong> in an August 2026 survey of its users.</li>
+<li>The ID-card service is <a href="https://github.com/Steffi-Soe/indonesian-id-ocr-service">open source on GitHub</a>.</li>
+</ul>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="next">
+<h2 id="next">What I'd do next</h2>
+<div class="body">
+<p>Build a labelled test set for fuel receipts, and improve how the toll reader matches gate names.</p>
+<p><a href="cariproduk.html">Next case study: matching messy product requests →</a></p>
+</div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+<span>Steffi Soeroredjo · Jakarta, Indonesia</span>
+<span><a href="../">Back to home</a></span>
+</footer>
+
+</div>
+<script>
+(function () {
+  var PROVINCES = {"11":"Aceh","12":"Sumatera Utara","13":"Sumatera Barat","14":"Riau","15":"Jambi","16":"Sumatera Selatan","17":"Bengkulu","18":"Lampung","19":"Kepulauan Bangka Belitung","21":"Kepulauan Riau","31":"DKI Jakarta","32":"Jawa Barat","33":"Jawa Tengah","34":"DI Yogyakarta","35":"Jawa Timur","36":"Banten","51":"Bali","52":"Nusa Tenggara Barat","53":"Nusa Tenggara Timur","61":"Kalimantan Barat","62":"Kalimantan Tengah","63":"Kalimantan Selatan","64":"Kalimantan Timur","65":"Kalimantan Utara","71":"Sulawesi Utara","72":"Sulawesi Tengah","73":"Sulawesi Selatan","74":"Sulawesi Tenggara","75":"Gorontalo","76":"Sulawesi Barat","81":"Maluku","82":"Maluku Utara","91":"Papua","92":"Papua Barat","93":"Papua Selatan","94":"Papua Tengah","95":"Papua Pegunungan","96":"Papua Barat Daya"};
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var nik = document.getElementById("nik"), dob = document.getElementById("dob"), sex = document.getElementById("sex");
+  var check = document.getElementById("check");
+  var ok = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>';
+  var bad = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
+  var last = {};
+
+  function seg(id, code, text) {
+    var el = document.getElementById(id);
+    el.querySelector("code").textContent = code;
+    el.querySelector("span").textContent = text;
+    if (last[id] !== undefined && last[id] !== code) {
+      el.classList.remove("changed"); void el.offsetWidth; el.classList.add("changed");
+    }
+    last[id] = code;
+  }
+  function say(state, msg) {
+    check.className = "check " + state;
+    check.innerHTML = (state === "ok" ? ok : bad) + "<span></span>";
+    check.querySelector("span").textContent = msg;
+  }
+  function update() {
+    var v = nik.value.replace(/\D/g, "");
+    if (v !== nik.value) nik.value = v;
+    if (v.length !== 16) {
+      say("bad", "A NIK has 16 digits. This one has " + v.length + ".");
+      return;
+    }
+    var p = v.slice(0, 2), d = parseInt(v.slice(6, 8), 10), m = parseInt(v.slice(8, 10), 10), yy = parseInt(v.slice(10, 12), 10);
+    var female = d > 40, day = female ? d - 40 : d;
+    var year = yy <= new Date().getFullYear() % 100 ? 2000 + yy : 1900 + yy;
+    seg("seg-prov", p, PROVINCES[p] || "not a province code");
+    seg("seg-area", v.slice(2, 4) + " " + v.slice(4, 6), "area codes");
+    seg("seg-day", v.slice(6, 8), (day >= 1 && day <= 31) ? day + ", " + (female ? "female (" + d + " − 40)" : "male") : "not a valid day");
+    seg("seg-mmyy", v.slice(8, 10) + " " + v.slice(10, 12), (m >= 1 && m <= 12) ? MONTHS[m - 1] + " " + year : "not a valid month");
+    seg("seg-serial", v.slice(12), "order of registration");
+    if (!PROVINCES[p] || day < 1 || day > 31 || m < 1 || m > 12) {
+      say("bad", "This can't be a valid NIK, so the service would rebuild these digits from the printed birth date and gender.");
+      return;
+    }
+    var nikText = day + " " + MONTHS[m - 1] + " " + year + ", " + (female ? "female" : "male");
+    var parts = dob.value.trim().split(/[-\/.\s]+/).map(Number);
+    var problems = [];
+    if (parts.length !== 3 || parts.some(isNaN)) {
+      problems.push("the printed birth date isn't in DD-MM-YYYY form");
+    } else {
+      if (parts[0] !== day) problems.push("day of birth (" + day + " vs " + parts[0] + ")");
+      if (parts[1] !== m) problems.push("month (" + m + " vs " + parts[1] + ")");
+      if (parts[2] !== year) problems.push("year (" + year + " vs " + parts[2] + ")");
+    }
+    if ((sex.value === "F") !== female) problems.push("gender (" + (female ? "female" : "male") + " vs " + (sex.value === "F" ? "female" : "male") + ")");
+    if (problems.length === 0) {
+      say("ok", "Matches the card: the NIK says " + nikText + ".");
+    } else {
+      say("bad", "Cross-check failed on " + problems.join(", ") + ". The NIK says " + nikText + ". The service would mark this card as failing the cross-check.");
+    }
+  }
+  document.getElementById("misread").addEventListener("click", function () {
+    var v = nik.value.replace(/\D/g, "");
+    if (v.length !== 16) { nik.value = "3174055205960001"; update(); return; }
+    var i = 7, digit = (parseInt(v[i], 10) + 1) % 10;
+    nik.value = v.slice(0, i) + digit + v.slice(i + 1);
+    update();
+  });
+  nik.addEventListener("input", update);
+  dob.addEventListener("input", update);
+  sex.addEventListener("change", update);
+  update();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A cited-answers assistant on one laptop GPU · Steffi Soeroredjo</title>
+<meta name="description" content="Case study: an on-premise RAG assistant for IT documents and budget data, with hybrid search, access control at retrieval, and an 88-question evaluation set.">
+<meta property="og:title" content="A cited-answers assistant on one 8 GB laptop GPU">
+<meta property="og:description" content="How retrieval went from 67% to 86%, and what didn't work.">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B6E4F'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='36' font-weight='700' fill='%23ffffff' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&amp;family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&amp;display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="site-header rise">
+<a class="name" href="../">Steffi Soeroredjo</a>
+<nav class="site-nav" aria-label="Main">
+<a href="../#work">Work</a>
+<a href="../#now">Now</a>
+<a href="../#about">About</a>
+<a href="../#cv">CV</a>
+</nav>
+</header>
+
+<main>
+
+<section class="cs-head" aria-labelledby="title">
+<a class="back rise" href="../#work">← All case studies</a>
+<p class="status rise d1">Case study · 2026</p>
+<h1 id="title" class="rise d2">A cited-answers assistant on one 8 GB laptop GPU</h1>
+<p class="lede rise d3">The ACS Knowledge Assistant answers IT staff questions from internal policies, SOPs and budget data. Every answer points to its source, and it says so when the answer isn't in the documents. Nothing leaves the company.</p>
+<dl class="facts rise d4">
+<div><dt>My role</dt><dd>Built it end to end</dd></div>
+<div><dt>When</dt><dd>Jul – Sep 2026</dd></div>
+<div><dt>Status</dt><dd>In use since Aug 2026</dd></div>
+<div><dt>Built with</dt><dd>Python, FastAPI, Qdrant, Ollama, Docling, DuckDB, React</dd></div>
+</dl>
+</section>
+
+<section class="row reveal" aria-labelledby="problem">
+<h2 id="problem">The problem</h2>
+<div class="body">
+<p>The IT department keeps its policies, SOPs, work instructions, forms and budget sheets in SharePoint. Finding one answer meant opening several documents, and it took about eight minutes. Most people simply asked someone in IT.</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="constraints">
+<h2 id="constraints">Constraints</h2>
+<div class="body">
+<ul>
+<li><strong>The data stays in the company.</strong> No cloud AI services, so every model runs locally.</li>
+<li><strong>One laptop GPU.</strong> An RTX 4060 with 8 GB of memory has to run search, the language model and everything else.</li>
+<li><strong>Two languages, messy files.</strong> Documents mix Indonesian and English, and some are scanned PDFs.</li>
+<li><strong>Not everyone sees everything.</strong> Access depends on department, role and clearance.</li>
+</ul>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="built">
+<h2 id="built">How it works</h2>
+<div class="body">
+<p>Questions take one of two lanes. Questions about documents go through search and come back as a cited answer. Questions about numbers go to a small SQL engine, so the figure is calculated rather than written by the model.</p>
+<figure>
+<p class="fig-title">Two lanes, one access check</p>
+<div class="lane">
+<span class="lane-label">Document questions</span>
+<div class="flow">
+<div class="step"><b>Access filter</b><span>only documents you're allowed to see</span></div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="step"><b>Hybrid search</b><span>meaning + keywords, merged</span></div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="step"><b>Local LLM</b><span>answers only from what was found</span></div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="step"><b>Answer with sources</b><span>or "not in the documents"</span></div>
+</div>
+</div>
+<div class="lane">
+<span class="lane-label">Number questions (budget, item master)</span>
+<div class="flow">
+<div class="step"><b>Access filter</b><span>same rules</span></div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="step"><b>Text to SQL</b><span>DuckDB over the tables</span></div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="step"><b>Python computes</b><span>the model never does the math</span></div>
+</div>
+</div>
+<figcaption>Scanned PDFs are read with Docling and RapidOCR, and the index syncs from SharePoint on a schedule.</figcaption>
+</figure>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="decisions">
+<h2 id="decisions">Decisions I made</h2>
+<div class="body">
+<ul>
+<li><strong>Hybrid search instead of embeddings alone.</strong> People search by meaning, but also by exact form codes and names, in two languages. Qdrant combines multilingual-e5 embeddings with BM25 keyword search and merges the two rankings.</li>
+<li><strong>Access control inside the search.</strong> The filter runs before documents are retrieved, so a document you can't see never reaches the model. Hiding it in the interface wouldn't be enough.</li>
+<li><strong>Refusing is a feature.</strong> When the sources don't support an answer, it says so and points to the IT helpdesk, instead of guessing.</li>
+<li><strong>I measured it with a fixed question set.</strong> 88 questions: 63 it should answer, 22 it should refuse, and 3 partial cases. Every change is run against the same set, three times.</li>
+</ul>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="needle">
+<h2 id="needle">What moved the numbers</h2>
+<div class="body">
+<p>Three changes I measured along the way. Two of them had nothing to do with the language model.</p>
+<figure>
+<p class="fig-title">Before and after each change</p>
+<div class="legend" aria-hidden="true"><span><i style="background:var(--accent-light)"></i>Before</span><span><i style="background:var(--accent)"></i>After</span></div>
+<div class="db" role="group" aria-label="Before and after values for three changes, also listed in the table below">
+<div class="db-row" tabindex="0">
+<div class="db-label"><b>Removed duplicate chunks</b><span>Retrieval hit rate</span></div>
+<div class="db-track"><span class="db-grid" style="left:0"></span><span class="db-grid" style="left:25%"></span><span class="db-grid" style="left:50%"></span><span class="db-grid" style="left:75%"></span><span class="db-grid" style="left:100%"></span><span class="db-line" style="left:18%;width:16.5%"></span><span class="db-dot before" style="left:18%"></span><span class="db-val before" style="left:18%">67.2%</span><span class="db-dot after" style="left:34.5%"></span><span class="db-val after" style="left:34.5%">73.8%</span></div>
+<span class="db-tip">29.3% of the index was duplicated text. Removing it let more distinct passages into the top results.</span>
+</div>
+<div class="db-row" tabindex="0">
+<div class="db-label"><b>Retrieved 12 passages instead of 8</b><span>Retrieval hit rate</span></div>
+<div class="db-track"><span class="db-grid" style="left:0"></span><span class="db-grid" style="left:25%"></span><span class="db-grid" style="left:50%"></span><span class="db-grid" style="left:75%"></span><span class="db-grid" style="left:100%"></span><span class="db-line" style="left:34.75%;width:21.75%"></span><span class="db-dot before" style="left:34.75%"></span><span class="db-val before" style="left:34.75%">73.9%</span><span class="db-dot after" style="left:56.5%"></span><span class="db-val after" style="left:56.5%">82.6%</span></div>
+<span class="db-tip">A small change in how much context the model gets, with a large effect on whether the right document is in it.</span>
+</div>
+<div class="db-row" tabindex="0">
+<div class="db-label"><b>Switched the answer model</b><span>Citations that support their sentence</span></div>
+<div class="db-track"><span class="db-grid" style="left:0"></span><span class="db-grid" style="left:25%"></span><span class="db-grid" style="left:50%"></span><span class="db-grid" style="left:75%"></span><span class="db-grid" style="left:100%"></span><span class="db-line" style="left:32.25%;width:57.75%"></span><span class="db-dot before" style="left:32.25%"></span><span class="db-val before" style="left:32.25%">72.9%</span><span class="db-dot after" style="left:90%"></span><span class="db-val after" style="left:90%">96.0%</span></div>
+<span class="db-tip">After comparing five local models, scored blind on held-out questions. Unsupported claims also fell from 19.3% to 6.9%.</span>
+</div>
+<div class="db-axis" aria-hidden="true"><span style="left:0">60%</span><span style="left:25%">70%</span><span style="left:50%">80%</span><span style="left:75%">90%</span><span style="left:100%">100%</span></div>
+</div>
+<figcaption>Each change was measured on its own at the time, so the gains don't simply add up. The axis starts at 60%.</figcaption>
+<details>
+<summary>Show as a table</summary>
+<div class="table-wrap">
+<table>
+<thead><tr><th>Change</th><th>Measure</th><th class="num">Before</th><th class="num">After</th></tr></thead>
+<tbody>
+<tr><td>Removed duplicate chunks</td><td>Retrieval hit rate</td><td class="num">67.2%</td><td class="num">73.8%</td></tr>
+<tr><td>Retrieved 12 passages instead of 8</td><td>Retrieval hit rate</td><td class="num">73.9%</td><td class="num">82.6%</td></tr>
+<tr><td>Switched the answer model</td><td>Citations that support their sentence</td><td class="num">72.9%</td><td class="num">96.0%</td></tr>
+<tr><td>Switched the answer model</td><td>Unsupported claims (lower is better)</td><td class="num">19.3%</td><td class="num">6.9%</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</figure>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="didnt">
+<h2 id="didnt">What didn't work</h2>
+<div class="body">
+<ul>
+<li><strong>Letting a model grade the answers.</strong> I tried using a 7B model to judge answer quality. Its scores weren't consistent enough to trust, so I dropped it and scored retrieval and citations directly against the question set.</li>
+<li><strong>More stages, more waiting.</strong> I built a reranker and a fact-checking step, but they're switched off for now.</li>
+<li><strong>Speed is about the model, not the search.</strong> Finding the passages takes about 0.16 seconds. Nearly all of the wait is the language model writing the answer, and on a laptop GPU the slowest answers still take around half a minute.</li>
+</ul>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="results">
+<h2 id="results">Results</h2>
+<div class="body">
+<ul>
+<li>In use since August 2026, and handed over to the IT team on 1 September.</li>
+<li>On the 88-question set (average of three runs): the right document is cited <strong>85.7%</strong> of the time, it makes the right call on answering or declining <strong>90.6%</strong> of the time, and the median answer takes <strong>6.5 seconds</strong>.</li>
+<li>About <strong>4.8 minutes</strong> saved per question compared with searching by hand.</li>
+</ul>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="next">
+<h2 id="next">What I'd do next</h2>
+<div class="body">
+<p>Move it from my laptop to a dedicated server, which would also make the slow answers faster. Then bring the reranker back and measure whether it's worth the extra wait.</p>
+<p><a href="ocr-suite.html">Next case study: reading Indonesian ID cards →</a></p>
+</div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+<span>Steffi Soeroredjo · Jakarta, Indonesia</span>
+<span><a href="../">Back to home</a></span>
+</footer>
+
+</div>
+</body>
+</html>

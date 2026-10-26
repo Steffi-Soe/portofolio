@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matching messy product requests · Steffi Soeroredjo</title>
+<meta name="description" content="Case study: Cariproduk, a tool that matches free-text, photo and spreadsheet requests for piping parts to the right catalog item.">
+<meta property="og:title" content="From &quot;45 DEG ELBOW, 3000 LB, SOCW&quot; to the right catalog item">
+<meta property="og:description" content="How Cariproduk reads messy product requests, and where it still trips up.">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B6E4F'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='36' font-weight='700' fill='%23ffffff' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&amp;family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&amp;display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="site-header rise">
+<a class="name" href="../">Steffi Soeroredjo</a>
+<nav class="site-nav" aria-label="Main">
+<a href="../#work">Work</a>
+<a href="../#now">Now</a>
+<a href="../#about">About</a>
+<a href="../#cv">CV</a>
+</nav>
+</header>
+
+<main>
+
+<section class="cs-head" aria-labelledby="title">
+<a class="back rise" href="../#work">← All case studies</a>
+<p class="status rise d1">Case study · 2025</p>
+<h1 id="title" class="rise d2">From "45 DEG ELBOW, 3000 LB, SOCW" to the right catalog item</h1>
+<p class="lede rise d3">Cariproduk takes customer requests for piping parts, whether typed, photographed or sent as a spreadsheet, and finds the matching item in the company's catalog.</p>
+<dl class="facts rise d4">
+<div><dt>My role</dt><dd>Built it end to end</dd></div>
+<div><dt>When</dt><dd>Jan – Dec 2025</dd></div>
+<div><dt>Status</dt><dd>Delivered, checked every month</dd></div>
+<div><dt>Built with</dt><dd>Gemini API, Ollama, FAISS, Meilisearch, FastAPI</dd></div>
+</dl>
+</section>
+
+<section class="row reveal" aria-labelledby="problem">
+<h2 id="problem">The problem</h2>
+<div class="body">
+<p>Every customer describes the same part differently. One writes "SOCW", another "SW", a third "socket weld". Sizes come in millimetres or inches, pressure classes as "3000 LB" or "3000#", and the material grade might be anywhere in the line. Staff matched each line to the catalog by hand.</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="examples">
+<h2 id="examples">What it has to read</h2>
+<div class="body">
+<figure>
+<p class="fig-title">Three requests, made up but typical</p>
+<div class="io">
+<div class="io-row">
+<div><span class="io-label">Request</span><p class="raw">45 DEG ELBOW, 3000 LB, SOCW, SS, ASTM A182-F304, ASME B16.11, SIZE: 2in</p></div>
+<div><span class="io-label">What it understands</span><p class="attrs"><span>Elbow, 45°</span><span>Class 3000</span><span>Socket weld</span><span>Stainless, A182 F304</span><span>ASME B16.11</span><span>2"</span></p></div>
+</div>
+<div class="io-row">
+<div><span class="io-label">Request</span><p class="raw">90-DEG (SR); MOC: CARBON STEEL; 150MM SCH STD; PLAIN END; ASME B16.9</p></div>
+<div><span class="io-label">What it understands</span><p class="attrs"><span>Elbow, 90°, short radius</span><span>Carbon steel</span><span>150 mm = 6"</span><span>Schedule 40 / STD</span><span>ASME B16.9</span></p></div>
+</div>
+<div class="io-row">
+<div><span class="io-label">Request</span><p class="raw">BOLT, NUT, 2 WASHERS, A193, CS, M16</p></div>
+<div><span class="io-label">What it understands</span><p class="attrs"><span>Stud bolt, A193</span><span>With 2 nuts and 2 washers</span><span>M16 ≈ 5/8"</span></p></div>
+</div>
+</div>
+<figcaption>Each set of attributes is then matched to one catalog item, or to none.</figcaption>
+</figure>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="how">
+<h2 id="how">How it works</h2>
+<div class="body">
+<figure>
+<p class="fig-title">From request to match</p>
+<div class="flow">
+<div class="step"><b>Rewrite</b><span>Gemini 2.5 Flash rewrites each request in a standard form and pulls out its attributes; spreadsheets go 20 lines at a time</span></div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="step"><b>Find candidates</b><span>meaning-based search (MiniLM + FAISS) and keyword search (Meilisearch)</span></div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="step"><b>Score attributes</b><span>size, material, rating and standard must agree</span></div>
+<span class="arrow" aria-hidden="true">→</span>
+<div class="step"><b>Answer</b><span>the best match, or "no match"</span></div>
+</div>
+</figure>
+<p>Flanges get special handling. A table of interchangeable flanges across DIN, JIS and ANSI standards lets a request in one standard match an equivalent item listed under another.</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="measure">
+<h2 id="measure">How I measured it</h2>
+<div class="body">
+<p>Most months I ran a batch of real requests through it and compared the result with what was actually quoted or sold. That turned out to be harder than it sounds: sometimes sales quoted a different grade or connection than the customer asked for, so "what was sold" isn't always the right answer. Disagreements went to a manual review.</p>
+<p>Accuracy rose from about <strong>90%</strong> in April 2025 to <strong>97.6%</strong> in September, or 97.1% if the lines sent to manual review count as misses. The target was 80%.</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="didnt">
+<h2 id="didnt">Where it still trips up</h2>
+<div class="body">
+<ul>
+<li><strong>Wall thickness written as measurements.</strong> A request like "Φ114.3×6.02" gives the outside diameter and wall thickness in millimetres. It has to be translated into a schedule, and those lines still often need a check.</li>
+<li><strong>Grade mix-ups.</strong> In some lines sales quoted 316 stainless where the request said 304. Cases like that are hard to grade automatically, so they went to manual review.</li>
+<li><strong>Items the catalog doesn't carry.</strong> For some JIS flanges the right answer is "no match". Returning the closest wrong item would be worse.</li>
+</ul>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="next">
+<h2 id="next">Next</h2>
+<div class="body">
+<p><a href="forecasting.html">Next case study: why I didn't ship automatic reorder points →</a></p>
+</div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+<span>Steffi Soeroredjo · Jakarta, Indonesia</span>
+<span><a href="../">Back to home</a></span>
+</footer>
+
+</div>
+</body>
+</html>

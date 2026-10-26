@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why I didn't ship automatic reorder points · Steffi Soeroredjo</title>
+<meta name="description" content="Case study: demand forecasting for about 11,000 products with intermittent demand, what the backtests showed, and what procurement got instead.">
+<meta property="og:title" content="Why I didn't ship automatic reorder points">
+<meta property="og:description" content="Intermittent demand, honest backtests, and knowing when not to automate.">
+<meta name="theme-color" content="#FFFFFF">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B6E4F'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='36' font-weight='700' fill='%23ffffff' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&amp;family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&amp;display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="site-header rise">
+<a class="name" href="../">Steffi Soeroredjo</a>
+<nav class="site-nav" aria-label="Main">
+<a href="../#work">Work</a>
+<a href="../#now">Now</a>
+<a href="../#about">About</a>
+<a href="../#cv">CV</a>
+</nav>
+</header>
+
+<main>
+
+<section class="cs-head" aria-labelledby="title">
+<a class="back rise" href="../#work">← All case studies</a>
+<p class="status rise d1">Case study · 2025–2026</p>
+<h1 id="title" class="rise d2">Why I didn't ship automatic reorder points</h1>
+<p class="lede rise d3">Procurement asked for a reorder point and safety stock for every product, so that orders could follow automatically. The backtests said that wasn't safe yet, so procurement got something else.</p>
+<dl class="facts rise d4">
+<div><dt>My role</dt><dd>Analysis, modelling and the pipeline</dd></div>
+<div><dt>When</dt><dd>Nov 2025 – Jul 2026</dd></div>
+<div><dt>Scope</dt><dd>10,948 products, 34 months of demand</dd></div>
+<div><dt>Built with</dt><dd>StatsForecast, LightGBM, Polars, DuckDB, Streamlit</dd></div>
+</dl>
+</section>
+
+<section class="row reveal" aria-labelledby="data">
+<h2 id="data">What the data looked like</h2>
+<div class="body">
+<p>Very few products had steady demand. Most sold rarely and unevenly: many go months without a sale, then sell a lot at once.</p>
+<p>That kind of demand, called intermittent or lumpy, breaks the usual forecasting methods, which assume something is sold most months. So the first step was sorting every product by its demand pattern (stable, seasonal, erratic, intermittent, new, or at risk of becoming dead stock) and by its value and variability (ABC/XYZ classes).</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="tried">
+<h2 id="tried">What I tried</h2>
+<div class="body">
+<ul>
+<li><strong>Models built for intermittent demand:</strong> Croston (SBA), TSB, ADIDA and IMAPA, next to ETS, Theta and a seasonal naive baseline.</li>
+<li><strong>A global LightGBM model</strong> predicting a median and a high estimate (P50 and P90) for every product.</li>
+<li><strong>An honest backtest.</strong> Four rolling windows of three months each. A model only "won" a product if it had the lowest error, beat the seasonal naive baseline, and passed a bias check.</li>
+<li><strong>Lead times from real deliveries.</strong> 27,591 goods receipts, giving the average and spread of delivery time per product and per supplier.</li>
+</ul>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="said">
+<h2 id="said">What the backtests said</h2>
+<div class="body">
+<p>The best models clearly beat the naive baseline, roughly halving its error. But overall, the forecast error was still larger than the demand being forecast, and the best set of forecasts didn't pass the bias check.</p>
+<p>Some of the inputs a reorder point needs were also missing: unit and ordering costs from the ERP, a promotion calendar, and a longer sales history.</p>
+<p>A reorder point built on that would look precise and be wrong often. Sending it straight into ordering would have been worse than not having one.</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="instead">
+<h2 id="instead">What procurement got instead</h2>
+<div class="body">
+<p>Seven analyses they could use directly, delivered in May 2026:</p>
+<ol>
+<li>An audit of the sales, purchase and stock data, with the gaps found</li>
+<li>A cleaned sales dataset they can reuse</li>
+<li>Every product classified by demand pattern and ABC/XYZ class</li>
+<li>Monthly demand per product over 34 months</li>
+<li>Lead time per supplier, from the goods receipts</li>
+<li>Stock health per product: critical, warning, overstock or dead stock</li>
+<li>A log of every transformation, so any number can be traced back</li>
+</ol>
+<p>The pipeline is built so automatic reorder points can be switched on later, once the missing ERP data exists.</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="build">
+<h2 id="build">How it's built</h2>
+<div class="body">
+<p>Polars and DuckDB for the data, Pandera to validate it at each step, and a command-line tool to run the pipeline. A Streamlit dashboard with ten pages shows the results. 122 tests, including property-based tests, run in CI on both Ubuntu and Windows.</p>
+</div>
+</section>
+
+<section class="row reveal" aria-labelledby="learned">
+<h2 id="learned">What I took from it</h2>
+<div class="body">
+<p>The most useful result of a model can be the decision not to automate yet. Being clear about why, and handing over something people can check, kept the work useful while the data catches up.</p>
+<p><a href="knowledge-assistant.html">Back to the first case study: the Knowledge Assistant →</a></p>
+</div>
+</section>
+
+</main>
+
+<footer class="site-footer">
+<span>Steffi Soeroredjo · Jakarta, Indonesia</span>
+<span><a href="../">Back to home</a></span>
+</footer>
+
+</div>
+</body>
+</html>
